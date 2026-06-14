@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rappi
+      POSTGRES_PASSWORD: rappi
+      POSTGRES_DB: rappi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://rappi:rappi@db:5432/rappi
+      MRSUSHI_API_URL: ${MRSUSHI_API_URL:-http://host.docker.internal:3000}
+      RAPPI_WEBHOOK_SECRET: ${RAPPI_WEBHOOK_SECRET:-change-me}
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

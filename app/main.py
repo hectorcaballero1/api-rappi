@@ -1,0 +1,37 @@
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from sqlalchemy.orm import Session
+from app.database import engine, Base, SessionLocal
+from app.routes import orders, auth
+from app.models import User
+from app.auth import hash_password
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    seed_admin()
+    yield
+
+
+def seed_admin():
+    username = os.getenv("RAPPI_ADMIN_USER", "admin")
+    password = os.getenv("RAPPI_ADMIN_PASSWORD", "admin123")
+    db: Session = SessionLocal()
+    try:
+        if not db.query(User).filter(User.username == username).first():
+            db.add(User(username=username, password_hash=hash_password(password), role="admin"))
+            db.commit()
+    finally:
+        db.close()
+
+
+app = FastAPI(title="Rappi Simulator API", lifespan=lifespan)
+app.include_router(auth.router)
+app.include_router(orders.router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
