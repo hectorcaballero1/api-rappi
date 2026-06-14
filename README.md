@@ -1,29 +1,14 @@
 # api-rappi
 
-Simulador de Rappi para el proyecto Mr Sushi. API REST autenticada que recibe notificaciones del backend serverless y permite gestionar pedidos.
+Simulador de Rappi para proyecto de Cloud Computing.
 
-## Auth
-
-Endpoints protegidos con JWT (excepto `/auth/login` y `/health`).
-
-- Admin por defecto: `admin` / `admin123` (configurable vía env vars)
-- Login: `POST /auth/login` → devuelve `token`
-- Enviar token en header: `Authorization: Bearer <token>`
-- Endpoint `/orders/{externalRef}/status` usa API key via `x-api-key`
-
-## Ejecutar local
-
-```bash
-uv run uvicorn app.main:app --reload
-```
-
-## Docker
+## ejecutar
 
 ```bash
 docker compose up --build -d
 ```
 
-Aprovisiona PostgreSQL + API en `http://localhost:8000`.
+Aprovisiona PostgreSQL + API en el puerto `8000`.
 
 ## Endpoints
 
@@ -36,7 +21,6 @@ Aprovisiona PostgreSQL + API en `http://localhost:8000`.
 | GET | `/orders/{externalRef}/history` | JWT | Trazabilidad de estados |
 | POST | `/orders/{externalRef}/status` | API key | Recibir actualización de Mr Sushi |
 | POST | `/orders/{externalRef}/deliver` | JWT | Simular entrega (notifica webhook) |
-| GET | `/health` | - | Health check |
 
 ## Env vars
 
