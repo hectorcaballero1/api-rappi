@@ -61,7 +61,7 @@ function renderLogin(app) {
   app.innerHTML = `
     <div class="login-page">
       <div class="login-card">
-        <img src="/logo.svg" alt="Rappi" height="40" style="margin-bottom:16px">
+        <img src="/logo.svg" alt="Rappi" height="64" style="margin-bottom:20px">
         <h1>Rappi</h1>
         <p>Simulador de pedidos</p>
         <form id="login-form">
