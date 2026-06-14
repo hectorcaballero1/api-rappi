@@ -61,7 +61,7 @@ function renderLogin(app) {
   app.innerHTML = `
     <div class="login-page">
       <div class="login-card">
-        <h1><span>R</span>appi</h1>
+        <h1>Rappi</h1>
         <p>Simulador de pedidos</p>
         <form id="login-form">
           <div class="form-group">
@@ -108,7 +108,7 @@ function shell(body) {
   ];
   return `
     <div class="topbar">
-      <div class="topbar-logo"><span>R</span>appi</div>
+      <div class="topbar-logo">Rappi</div>
       <div class="topbar-nav">
         ${nav.map(n => `<a href="${n.href}" data-nav>${n.label}</a>`).join('')}
       </div>

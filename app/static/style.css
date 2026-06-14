@@ -47,8 +47,6 @@ a { color: var(--accent); text-decoration: none; }
   line-height: 1;
 }
 
-.topbar-logo span { color: var(--accent); }
-
 .topbar-nav {
   display: flex;
   gap: 4px;
@@ -88,9 +86,9 @@ a { color: var(--accent); text-decoration: none; }
 
 /* ─── Main ─── */
 .main-content {
-  margin-top: var(--topbar-h);
+  margin: var(--topbar-h) auto 0;
   padding: 28px 32px;
-  max-width: 1200px;
+  max-width: 880px;
 }
 
 /* ─── Login ─── */
