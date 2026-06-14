@@ -2,7 +2,7 @@
 
 Simulador de Rappi para proyecto de Cloud Computing.
 
-## ejecutar
+## Ejecutar 
 
 ```bash
 docker compose up --build -d
