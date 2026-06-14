@@ -1,7 +1,7 @@
 import os
 import httpx
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Order, StatusHistory
@@ -42,8 +42,16 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
 
 
 @router.get("")
-def list_orders(db: Session = Depends(get_db)):
-    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+def list_orders(
+    db: Session = Depends(get_db),
+    limit: int = Query(20, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    status: str = Query(None),
+):
+    q = db.query(Order)
+    if status:
+        q = q.filter(Order.status == status)
+    orders = q.order_by(Order.created_at.desc()).offset(offset).limit(limit).all()
     return [OrderResponse.model_validate(o) for o in orders]
 
 

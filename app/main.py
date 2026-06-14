@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from app.database import engine, Base, SessionLocal
 from app.routes import orders, auth
@@ -35,3 +36,6 @@ app.include_router(orders.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
