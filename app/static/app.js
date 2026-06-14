@@ -61,6 +61,7 @@ function renderLogin(app) {
   app.innerHTML = `
     <div class="login-page">
       <div class="login-card">
+        <img src="/logo.svg" alt="Rappi" height="40" style="margin-bottom:16px">
         <h1>Rappi</h1>
         <p>Simulador de pedidos</p>
         <form id="login-form">
@@ -108,7 +109,7 @@ function shell(body) {
   ];
   return `
     <div class="topbar">
-      <div class="topbar-logo"><img src="/logo.svg" alt="Rappi" height="20"></div>
+      <div class="topbar-logo"><img src="/logo.svg" alt="Rappi" height="32"></div>
       <div class="topbar-nav">
         ${nav.map(n => `<a href="${n.href}" data-nav>${n.label}</a>`).join('')}
       </div>

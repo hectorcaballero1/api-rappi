@@ -10,7 +10,7 @@
   --orange: #c47a2a;
   --blue: #2a6bbd;
   --radius: 4px;
-  --topbar-h: 54px;
+  --topbar-h: 64px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
