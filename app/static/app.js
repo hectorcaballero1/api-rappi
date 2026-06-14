@@ -108,7 +108,7 @@ function shell(body) {
   ];
   return `
     <div class="topbar">
-      <div class="topbar-logo">Rappi</div>
+      <div class="topbar-logo"><img src="/logo.svg" alt="Rappi" height="20"></div>
       <div class="topbar-nav">
         ${nav.map(n => `<a href="${n.href}" data-nav>${n.label}</a>`).join('')}
       </div>
@@ -258,7 +258,7 @@ function renderNewOrder(app) {
   const tenants = ['mrsushi-lamarina', 'mrsushi-espinar', 'mrsushi-malldelsur', 'mrsushi-megaplaza'];
   app.innerHTML = shell(`
     <div class="page-header"><h2>Nuevo pedido</h2></div>
-    <form id="new-order-form" style="max-width:440px">
+    <form id="new-order-form">
       <div class="form-group">
         <label>External Ref</label>
         <input type="text" id="form-ref" required placeholder="pedido-001" autocomplete="off">
