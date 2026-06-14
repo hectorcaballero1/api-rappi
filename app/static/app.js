@@ -43,12 +43,7 @@ function toast(msg, type = 'success') {
 function render() {
   const hash = location.hash || '#/login';
   const app = document.getElementById('app');
-
-  if (!isLoggedIn() && hash !== '#/login') {
-    navigate('#/login');
-    return;
-  }
-
+  if (!isLoggedIn() && hash !== '#/login') { navigate('#/login'); return; }
   if (hash === '#/login') { renderLogin(app); return; }
   if (hash === '#/orders') { renderOrders(app); return; }
   if (hash.startsWith('#/orders/')) {
@@ -103,48 +98,51 @@ function renderLogin(app) {
   };
 }
 
-/* ─── Layout ─── */
-function layout(body) {
+/* ─── Shell ─── */
+function shell(body) {
   const user = JSON.parse(atob(getToken().split('.')[1]));
   const nav = [
     { href: '#/dashboard', label: 'Dashboard' },
     { href: '#/orders', label: 'Pedidos' },
-    { href: '#/orders/new', label: 'Nuevo pedido' },
+    { href: '#/orders/new', label: 'Nuevo' },
   ];
   return `
-    <div class="app-layout">
-      <nav class="sidebar">
-        <div class="sidebar-logo"><span>R</span>appi</div>
-        <div class="sidebar-section">
-          <div class="label">Menú</div>
-          ${nav.map(n =>
-            `<a href="${n.href}" data-nav class="${n.href === location.hash ? 'active' : ''}">${n.label}</a>`
-          ).join('')}
-        </div>
-        <div class="sidebar-actions">
-          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${user.username}</div>
-          <a href="#" id="logout-btn" style="font-size:13px;color:var(--text2)">Cerrar sesión</a>
-        </div>
-      </nav>
-      <main class="main-content">${body}</main>
-    </div>`;
+    <div class="topbar">
+      <div class="topbar-logo"><span>R</span>appi</div>
+      <div class="topbar-nav">
+        ${nav.map(n => `<a href="${n.href}" data-nav>${n.label}</a>`).join('')}
+      </div>
+      <div class="topbar-right">
+        <span class="user-name">${user.username}</span>
+        <a href="#" id="logout-btn">Salir</a>
+      </div>
+    </div>
+    <main class="main-content">${body}</main>`;
+}
+
+function bindNav() {
+  document.querySelectorAll('[data-nav]').forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === location.hash);
+  });
+  const lo = document.getElementById('logout-btn');
+  if (lo) lo.onclick = (e) => { e.preventDefault(); clearToken(); navigate('#/login'); };
 }
 
 /* ─── Dashboard ─── */
 async function renderDashboard(app) {
-  app.innerHTML = layout('<div class="loading">Cargando…</div>');
+  app.innerHTML = shell('<div class="loading">Cargando…</div>');
   try {
     const orders = await api('GET', '/orders?limit=500');
     const sorted = orders.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
     const inProcess = orders.filter(o => o.status !== 'entregado' && o.status !== 'pendiente');
     const pending = orders.filter(o => o.status === 'pendiente');
     const delivered = orders.filter(o => o.status === 'entregado');
-    const recent = sorted.slice(0, 10);
+    const recent = sorted.slice(0, 12);
 
-    app.innerHTML = layout(`
+    app.innerHTML = shell(`
       <div class="page-header"><h2>Dashboard</h2></div>
       <div class="stats-row">
-        <div class="stat-card"><div class="stat-label">Total pedidos</div><div class="stat-value blue">${orders.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value blue">${orders.length}</div></div>
         <div class="stat-card"><div class="stat-label">En proceso</div><div class="stat-value orange">${inProcess.length}</div></div>
         <div class="stat-card"><div class="stat-label">Pendientes</div><div class="stat-value accent">${pending.length}</div></div>
         <div class="stat-card"><div class="stat-label">Entregados</div><div class="stat-value green">${delivered.length}</div></div>
@@ -153,24 +151,24 @@ async function renderDashboard(app) {
       ${recent.length ? tableHtml(recent) : '<div class="empty-state"><p>No hay pedidos aún</p></div>'}
     `);
     bindNav();
-  } catch(e) { app.innerHTML = layout(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
+  } catch(e) { app.innerHTML = shell(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
 }
 
-/* ─── Orders List ─── */
+/* ─── Orders list ─── */
 let ordersOffset = 0;
 const PAGE_SIZE = 20;
 
 async function renderOrders(app) {
-  app.innerHTML = layout('<div class="loading">Cargando…</div>');
+  app.innerHTML = shell('<div class="loading">Cargando…</div>');
   try {
-    const filterEl = document.getElementById('status-filter');
-    const status = filterEl ? filterEl.value : '';
+    const fe = document.getElementById('status-filter');
+    const status = fe ? fe.value : '';
     const url = `/orders?limit=${PAGE_SIZE}&offset=${ordersOffset}${status ? `&status=${status}` : ''}`;
     const orders = await api('GET', url);
     const all = await api('GET', `/orders?limit=500${status ? `&status=${status}` : ''}`);
     const total = all.length;
 
-    app.innerHTML = layout(`
+    app.innerHTML = shell(`
       <div class="page-header">
         <h2>Pedidos</h2>
         <div class="page-header-actions">
@@ -193,30 +191,28 @@ async function renderOrders(app) {
       </div>
     `);
     bindNav();
-
     document.getElementById('status-filter').onchange = () => { ordersOffset = 0; renderOrders(app); };
     document.getElementById('prev-page').onclick = () => { ordersOffset = Math.max(0, ordersOffset - PAGE_SIZE); renderOrders(app); };
     document.getElementById('next-page').onclick = () => { ordersOffset += PAGE_SIZE; renderOrders(app); };
-  } catch(e) { app.innerHTML = layout(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
+  } catch(e) { app.innerHTML = shell(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
 }
 
-/* ─── Order Detail ─── */
+/* ─── Order detail ─── */
 async function renderOrderDetail(app, ref) {
-  app.innerHTML = layout('<div class="loading">Cargando…</div>');
+  app.innerHTML = shell('<div class="loading">Cargando…</div>');
   try {
     const [order, history] = await Promise.all([
       api('GET', `/orders/${encodeURIComponent(ref)}`),
       api('GET', `/orders/${encodeURIComponent(ref)}/history`),
     ]);
+    const b = { 'pendiente':'','cocinando':'badge-orange','empacando':'badge-blue','en_camino':'badge-orange','entregado':'badge-green' };
+    const bc = b[order.status] || '';
 
-    const badgeClass = { 'pendiente':'','cocinando':'badge-orange','empacando':'badge-blue','en_camino':'badge-orange','entregado':'badge-green' };
-    const bClass = badgeClass[order.status] || '';
-
-    app.innerHTML = layout(`
+    app.innerHTML = shell(`
       <div class="page-header">
         <h2>${order.external_ref}</h2>
         <div class="page-header-actions">
-          <span class="badge ${bClass}">${order.status}</span>
+          <span class="badge ${bc}">${order.status}</span>
           ${order.status !== 'entregado' ? `<button class="btn btn-primary btn-sm" id="deliver-btn">Marcar entregado</button>` : ''}
         </div>
       </div>
@@ -226,10 +222,10 @@ async function renderOrderDetail(app, ref) {
         <div class="detail-field"><div class="label">Dirección</div><div class="value">${order.customer_address || '—'}</div></div>
         <div class="detail-field"><div class="label">Total</div><div class="value">S/ ${order.total || '—'}</div></div>
         <div class="detail-field"><div class="label">Creado</div><div class="value" style="font-family:'JetBrains Mono',monospace;font-size:13px">${formatDate(order.created_at)}</div></div>
-        ${order.delivered_at ? `<div class="detail-field"><div class="label">Entregado</div><div class="value" style="font-family:'JetBrains Mono',monospace;font-size:13px">${formatDate(order.delivered_at)}</div></div>` : ''}
+        ${order.delivered_at ? `<div class="detail-field"><div class="label">Entregado</div><div class="value mono-sm">${formatDate(order.delivered_at)}</div></div>` : ''}
         <div class="detail-field full"><div class="label">Items</div><div class="value"><pre>${JSON.stringify(order.items || [], null, 2)}</pre></div></div>
       </div>
-      <div class="section-heading" style="font-size:18px">Historial</div>
+      <div class="section-heading" style="font-size:17px">Historial</div>
       ${history.length ? `
       <div class="timeline">
         ${history.map(h => `
@@ -254,37 +250,34 @@ async function renderOrderDetail(app, ref) {
         } catch(e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Marcar entregado'; }
       };
     }
-  } catch(e) { app.innerHTML = layout(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
+  } catch(e) { app.innerHTML = shell(`<div class="alert alert-error">${e.message}</div>`); bindNav(); }
 }
 
-/* ─── New Order ─── */
+/* ─── New order ─── */
 function renderNewOrder(app) {
-  app.innerHTML = layout(`
+  const tenants = ['mrsushi-lamarina', 'mrsushi-espinar', 'mrsushi-malldelsur', 'mrsushi-megaplaza'];
+  app.innerHTML = shell(`
     <div class="page-header"><h2>Nuevo pedido</h2></div>
-    <form id="new-order-form" style="max-width:520px">
+    <form id="new-order-form" style="max-width:440px">
       <div class="form-group">
         <label>External Ref</label>
-        <input type="text" id="form-ref" required placeholder="pedido-001">
+        <input type="text" id="form-ref" required placeholder="pedido-001" autocomplete="off">
       </div>
       <div class="form-group">
-        <label>Sede (tenant ID)</label>
-        <input type="text" id="form-tenant" value="mrsushi-lamarina" required>
+        <label>Sede</label>
+        <select id="form-tenant">${tenants.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
       </div>
       <div class="form-group">
         <label>Cliente</label>
-        <input type="text" id="form-name" placeholder="Nombre del cliente">
+        <input type="text" id="form-name" required placeholder="Nombre del cliente">
       </div>
       <div class="form-group">
         <label>Dirección</label>
-        <textarea id="form-address" placeholder="Dirección de entrega"></textarea>
+        <input type="text" id="form-address" required placeholder="Av. Ejemplo 123">
       </div>
       <div class="form-group">
         <label>Total (S/)</label>
-        <input type="number" id="form-total" step="0.01" value="0">
-      </div>
-      <div class="form-group">
-        <label>Items (JSON)</label>
-        <textarea id="form-items" placeholder='[{"name":"Box 25 Makis","qty":1,"price":89.9}]'></textarea>
+        <input type="number" id="form-total" step="0.01" required placeholder="89.90">
       </div>
       <button type="submit" class="btn btn-primary">Crear pedido</button>
     </form>
@@ -295,16 +288,17 @@ function renderNewOrder(app) {
     e.preventDefault();
     const btn = e.target.querySelector('button');
     btn.disabled = true; btn.textContent = 'Creando…';
+    const ref = document.getElementById('form-ref').value;
     try {
       await api('POST', '/orders', {
-        external_ref: document.getElementById('form-ref').value,
+        external_ref: ref,
         tenant_id: document.getElementById('form-tenant').value,
-        customer_name: document.getElementById('form-name').value || '',
-        customer_address: document.getElementById('form-address').value || '',
-        total: parseFloat(document.getElementById('form-total').value) || 0,
-        items: JSON.parse(document.getElementById('form-items').value || '[]'),
+        customer_name: document.getElementById('form-name').value,
+        customer_address: document.getElementById('form-address').value,
+        total: parseFloat(document.getElementById('form-total').value),
+        items: [{ name: 'Producto', qty: 1, price: parseFloat(document.getElementById('form-total').value) }],
       });
-      toast('Pedido creado');
+      toast(`Pedido ${ref} creado`);
       navigate('#/orders');
     } catch(e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Crear pedido'; }
   };
@@ -312,41 +306,27 @@ function renderNewOrder(app) {
 
 /* ─── Helpers ─── */
 function tableHtml(orders) {
-  const badgeClass = { 'pendiente':'','cocinando':'badge-orange','empacando':'badge-blue','en_camino':'badge-orange','entregado':'badge-green' };
+  const b = { 'pendiente':'','cocinando':'badge-orange','empacando':'badge-blue','en_camino':'badge-orange','entregado':'badge-green' };
   return `
   <div class="table-container">
     <table>
-      <thead><tr>
-        <th>External Ref</th><th>Sede</th><th>Estado</th><th>Cliente</th><th>Total</th><th></th>
-      </tr></thead>
-      <tbody>
-        ${orders.map(o => `
-          <tr>
-            <td><a href="#/orders/${o.external_ref}">${o.external_ref}</a></td>
-            <td style="color:var(--text2)">${o.tenant_id}</td>
-            <td><span class="badge ${badgeClass[o.status]||''}">${o.status}</span></td>
-            <td>${o.customer_name || '—'}</td>
-            <td>S/ ${o.total || '—'}</td>
-            <td><a href="#/orders/${o.external_ref}" class="btn btn-secondary btn-sm">Ver</a></td>
-          </tr>
-        `).join('')}
-      </tbody>
+      <thead><tr><th>Ref</th><th>Sede</th><th>Estado</th><th>Cliente</th><th>Total</th><th></th></tr></thead>
+      <tbody>${orders.map(o => `
+        <tr>
+          <td><a href="#/orders/${o.external_ref}">${o.external_ref}</a></td>
+          <td style="color:var(--text2)">${o.tenant_id}</td>
+          <td><span class="badge ${b[o.status]||''}">${o.status}</span></td>
+          <td>${o.customer_name || '—'}</td>
+          <td>S/ ${o.total || '—'}</td>
+          <td><a href="#/orders/${o.external_ref}" class="btn btn-secondary btn-sm">Ver</a></td>
+        </tr>`).join('')}</tbody>
     </table>
   </div>`;
 }
 
 function formatDate(d) {
   if (!d) return '—';
-  const date = new Date(d);
-  return date.toLocaleDateString('es-PE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-}
-
-function bindNav() {
-  document.querySelectorAll('[data-nav]').forEach(a => {
-    a.classList.toggle('active', a.getAttribute('href') === location.hash);
-  });
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.onclick = (e) => { e.preventDefault(); clearToken(); navigate('#/login'); };
+  return new Date(d).toLocaleDateString('es-PE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
 render();
