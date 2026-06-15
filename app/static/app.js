@@ -280,18 +280,18 @@ function fillRandom(tenants) {
 }
 
 function renderNewOrder(app) {
-  const tenants = ['mrsushi-lamarina', 'mrsushi-espinar', 'mrsushi-malldelsur', 'mrsushi-megaplaza'];
+  const TENANTS = ['mrsushi-lamarina', 'mrsushi-espinar', 'mrsushi-malldelsur', 'mrsushi-megaplaza'];
   app.innerHTML = shell(`
     <div class="page-header">
       <h2>Nuevo pedido</h2>
       <div class="page-header-actions">
-        <button class="btn btn-secondary btn-sm" id="random-btn">🎲 Generar aleatorio</button>
+        <button class="btn btn-secondary btn-sm" id="random-btn">🎲 Aleatorio</button>
       </div>
     </div>
     <form id="new-order-form">
       <div class="form-group">
         <label>Sede</label>
-        <select id="form-tenant">${tenants.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+        <select id="form-tenant">${TENANTS.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
       </div>
       <div class="form-group">
         <label>Cliente</label>
@@ -302,32 +302,115 @@ function renderNewOrder(app) {
         <input type="text" id="form-address" required placeholder="Av. Ejemplo 123">
       </div>
       <div class="form-group">
-        <label>Total (S/)</label>
-        <input type="number" id="form-total" step="0.01" required placeholder="89.90">
+        <label>Productos</label>
+        <div id="catalog-loading" style="color:var(--text2);font-size:.875rem">Cargando catálogo…</div>
+        <div id="catalog-items" style="display:none;max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px"></div>
       </div>
-      <button type="submit" class="btn btn-primary">Crear pedido</button>
+      <div class="form-group">
+        <label>Total</label>
+        <div id="form-total-display" style="font-size:1.25rem;font-weight:700;color:var(--accent)">S/ 0.00</div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="submit-btn" disabled>Crear pedido</button>
     </form>
   `);
   bindNav();
 
-  document.getElementById('random-btn').onclick = () => fillRandom(tenants);
+  // Estado del carrito: { productId -> { product, qty } }
+  const cart = {};
+
+  function recalc() {
+    let total = 0;
+    Object.values(cart).forEach(({ product, qty }) => { total += product.price * qty; });
+    document.getElementById('form-total-display').textContent = `S/ ${total.toFixed(2)}`;
+    document.getElementById('submit-btn').disabled = total === 0;
+  }
+
+  function renderCatalog(products) {
+    const container = document.getElementById('catalog-items');
+    document.getElementById('catalog-loading').style.display = 'none';
+    container.style.display = 'flex';
+
+    // Agrupar por categoría
+    const byCategory = {};
+    products.forEach(p => {
+      if (!byCategory[p.category]) byCategory[p.category] = [];
+      byCategory[p.category].push(p);
+    });
+
+    container.innerHTML = Object.entries(byCategory).map(([cat, prods]) => `
+      <div style="margin-bottom:8px">
+        <div style="font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;padding:4px 0">${cat}</div>
+        ${prods.map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">
+            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">S/${parseFloat(p.price).toFixed(2)}</span></span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="btn btn-secondary btn-sm" data-dec="${p.id}" style="padding:2px 8px">−</button>
+              <span id="qty-${p.id}" style="min-width:20px;text-align:center">0</span>
+              <button type="button" class="btn btn-secondary btn-sm" data-inc="${p.id}" style="padding:2px 8px">+</button>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+
+    // Map de productos por id para acceso rápido
+    const productMap = {};
+    products.forEach(p => { productMap[p.id] = p; });
+
+    container.addEventListener('click', e => {
+      const inc = e.target.dataset.inc;
+      const dec = e.target.dataset.dec;
+      if (inc) {
+        cart[inc] = cart[inc] || { product: productMap[inc], qty: 0 };
+        cart[inc].qty++;
+        document.getElementById(`qty-${inc}`).textContent = cart[inc].qty;
+        recalc();
+      }
+      if (dec && cart[dec] && cart[dec].qty > 0) {
+        cart[dec].qty--;
+        document.getElementById(`qty-${dec}`).textContent = cart[dec].qty;
+        if (cart[dec].qty === 0) delete cart[dec];
+        recalc();
+      }
+    });
+  }
+
+  // Cargar catálogo
+  api('GET', '/catalog').then(data => {
+    const products = Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+    renderCatalog(products);
+  }).catch(() => {
+    document.getElementById('catalog-loading').textContent = 'Error al cargar catálogo';
+  });
+
+  document.getElementById('random-btn').onclick = () => {
+    const o = randomOrder(TENANTS);
+    document.getElementById('form-tenant').value  = o.tenant;
+    document.getElementById('form-name').value    = o.name;
+    document.getElementById('form-address').value = o.address;
+  };
 
   document.getElementById('new-order-form').onsubmit = async (e) => {
     e.preventDefault();
-    const btn = e.target.querySelector('[type=submit]');
+    const btn = document.getElementById('submit-btn');
     btn.disabled = true; btn.textContent = 'Creando…';
+    const items = Object.values(cart).map(({ product, qty }) => ({
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      price: parseFloat(product.price),
+      qty,
+    }));
+    const total = items.reduce((s, i) => s + i.price * i.qty, 0);
     try {
-      const o = randomOrder(tenants);
       const created = await api('POST', '/orders', {
         tenant_id: document.getElementById('form-tenant').value,
         customer_name: document.getElementById('form-name').value,
         customer_address: document.getElementById('form-address').value,
-        total: parseFloat(document.getElementById('form-total').value),
-        items: o.items,
+        total: parseFloat(total.toFixed(2)),
+        items,
       });
       toast(`Pedido ${created.external_ref} creado`);
       navigate('#/orders');
-    } catch(e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Crear pedido'; }
+    } catch(err) { toast(err.message, 'error'); btn.disabled = false; btn.textContent = 'Crear pedido'; }
   };
 }
 

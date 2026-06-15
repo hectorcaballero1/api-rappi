@@ -10,8 +10,18 @@ from app.schemas import OrderCreate, StatusUpdate, OrderResponse, StatusHistoryR
 from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/orders", tags=["orders"], dependencies=[Depends(get_current_user)])
+catalog_router = APIRouter(tags=["catalog"])
 MRSUSHI_API_URL = os.getenv("MRSUSHI_API_URL", "http://localhost:3000")
 RAPPI_WEBHOOK_SECRET = os.getenv("RAPPI_WEBHOOK_SECRET", "")
+
+
+@catalog_router.get("/catalog", dependencies=[Depends(get_current_user)])
+def get_catalog():
+    try:
+        res = httpx.get(f"{MRSUSHI_API_URL}/products", timeout=8)
+        return res.json()
+    except Exception as e:
+        raise HTTPException(502, f"No se pudo obtener el catálogo: {e}")
 
 
 def verify_api_key(x_api_key: str = Header(None)):
@@ -39,7 +49,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
 
     # Notificar al backend de Mr. Sushi para que cree el pedido en DynamoDB
     try:
-        httpx.post(
+        res = httpx.post(
             f"{MRSUSHI_API_URL}/orders",
             json={
                 "tenantId": order.tenant_id,
@@ -51,10 +61,11 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
                 },
                 "items": order.items or [],
             },
-            timeout=5,
+            timeout=10,
         )
+        print(f"[MrSushi] POST /orders → {res.status_code}: {res.text[:200]}")
     except Exception as e:
-        print(f"[WARN] No se pudo notificar a Mr. Sushi: {e}")
+        print(f"[MrSushi] ERROR: {e}")
 
     return {
         "id": str(order.id),
