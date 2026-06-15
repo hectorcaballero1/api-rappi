@@ -254,10 +254,41 @@ async function renderOrderDetail(app, ref) {
 }
 
 /* ─── New order ─── */
+const NOMBRES = ['Luis García','María Quispe','Carlos Ramos','Ana Torres','José Flores','Lucía Mendoza','Diego Vargas','Sofía Castro'];
+const CALLES  = ['Av. Larco 450','Jr. Miraflores 123','Av. Brasil 890','Calle Lima 34','Av. Javier Prado 2100','Jr. Cusco 88','Av. Arequipa 560','Calle Libertad 77'];
+const PLATOS  = ['Acevichado Maki','Ebi Furai','Arma tu Poke','Alitas BBQ','Maki Box','Temaki Acevichado','California Maki','Gyoza de Pescado','Yakimeshi','Ramen Mr Sushi'];
+
+function randomOrder(tenants) {
+  const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const qty  = () => Math.floor(Math.random() * 3) + 1;
+  const ref  = 'rappi-' + Date.now();
+  const items = Array.from({ length: Math.floor(Math.random() * 3) + 1 }, () => {
+    const price = +(Math.random() * 30 + 15).toFixed(2);
+    const q = qty();
+    return { name: rand(PLATOS), qty: q, price };
+  });
+  const total = +(items.reduce((s, i) => s + i.price * i.qty, 0)).toFixed(2);
+  return { ref, tenant: rand(tenants), name: rand(NOMBRES), address: rand(CALLES), total, items };
+}
+
+function fillRandom(tenants) {
+  const o = randomOrder(tenants);
+  document.getElementById('form-ref').value     = o.ref;
+  document.getElementById('form-tenant').value  = o.tenant;
+  document.getElementById('form-name').value    = o.name;
+  document.getElementById('form-address').value = o.address;
+  document.getElementById('form-total').value   = o.total;
+}
+
 function renderNewOrder(app) {
   const tenants = ['mrsushi-lamarina', 'mrsushi-espinar', 'mrsushi-malldelsur', 'mrsushi-megaplaza'];
   app.innerHTML = shell(`
-    <div class="page-header"><h2>Nuevo pedido</h2></div>
+    <div class="page-header">
+      <h2>Nuevo pedido</h2>
+      <div class="page-header-actions">
+        <button class="btn btn-secondary btn-sm" id="random-btn">🎲 Generar aleatorio</button>
+      </div>
+    </div>
     <form id="new-order-form">
       <div class="form-group">
         <label>External Ref</label>
@@ -284,19 +315,22 @@ function renderNewOrder(app) {
   `);
   bindNav();
 
+  document.getElementById('random-btn').onclick = () => fillRandom(tenants);
+
   document.getElementById('new-order-form').onsubmit = async (e) => {
     e.preventDefault();
-    const btn = e.target.querySelector('button');
+    const btn = e.target.querySelector('[type=submit]');
     btn.disabled = true; btn.textContent = 'Creando…';
     const ref = document.getElementById('form-ref').value;
     try {
+      const o = randomOrder(tenants); // para tener los items; si el form ya tiene datos, los usamos
       await api('POST', '/orders', {
         external_ref: ref,
         tenant_id: document.getElementById('form-tenant').value,
         customer_name: document.getElementById('form-name').value,
         customer_address: document.getElementById('form-address').value,
         total: parseFloat(document.getElementById('form-total').value),
-        items: [{ name: 'Producto', qty: 1, price: parseFloat(document.getElementById('form-total').value) }],
+        items: o.items,
       });
       toast(`Pedido ${ref} creado`);
       navigate('#/orders');
