@@ -40,7 +40,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     # Notificar al backend de Mr. Sushi para que cree el pedido en DynamoDB
     try:
         httpx.post(
-            f"{MRSUSHI_API_URL}/pedidos",
+            f"{MRSUSHI_API_URL}/orders",
             json={
                 "tenantId": order.tenant_id,
                 "source": "rappi",
@@ -53,8 +53,8 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
             },
             timeout=5,
         )
-    except httpx.RequestError:
-        pass  # No bloquear si el backend de Mr. Sushi no responde
+    except Exception as e:
+        print(f"[WARN] No se pudo notificar a Mr. Sushi: {e}")
 
     return {
         "id": str(order.id),
