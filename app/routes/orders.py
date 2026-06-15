@@ -1,4 +1,5 @@
 import os
+import uuid
 import httpx
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
@@ -22,7 +23,7 @@ def verify_api_key(x_api_key: str = Header(None)):
 @router.post("")
 def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
     order = Order(
-        external_ref=payload.external_ref,
+        external_ref=payload.external_ref or f"rappi-{uuid.uuid4().hex[:10]}",
         tenant_id=payload.tenant_id,
         status="pendiente",
         customer_name=payload.customer_name,
@@ -31,6 +32,7 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
         items=payload.items,
     )
     db.add(order)
+    db.flush()  # obtiene el UUID generado por Postgres antes del commit
     db.add(StatusHistory(order_id=order.id, status="pendiente", source="rappi"))
     db.commit()
     db.refresh(order)

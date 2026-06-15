@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class OrderCreate(BaseModel):
-    external_ref: str
+    external_ref: Optional[str] = None
     tenant_id: str
     customer_name: str
     customer_address: str

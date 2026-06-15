@@ -273,7 +273,6 @@ function randomOrder(tenants) {
 
 function fillRandom(tenants) {
   const o = randomOrder(tenants);
-  document.getElementById('form-ref').value     = o.ref;
   document.getElementById('form-tenant').value  = o.tenant;
   document.getElementById('form-name').value    = o.name;
   document.getElementById('form-address').value = o.address;
@@ -290,10 +289,6 @@ function renderNewOrder(app) {
       </div>
     </div>
     <form id="new-order-form">
-      <div class="form-group">
-        <label>External Ref</label>
-        <input type="text" id="form-ref" required placeholder="pedido-001" autocomplete="off">
-      </div>
       <div class="form-group">
         <label>Sede</label>
         <select id="form-tenant">${tenants.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
@@ -321,18 +316,16 @@ function renderNewOrder(app) {
     e.preventDefault();
     const btn = e.target.querySelector('[type=submit]');
     btn.disabled = true; btn.textContent = 'Creando…';
-    const ref = document.getElementById('form-ref').value;
     try {
-      const o = randomOrder(tenants); // para tener los items; si el form ya tiene datos, los usamos
-      await api('POST', '/orders', {
-        external_ref: ref,
+      const o = randomOrder(tenants);
+      const created = await api('POST', '/orders', {
         tenant_id: document.getElementById('form-tenant').value,
         customer_name: document.getElementById('form-name').value,
         customer_address: document.getElementById('form-address').value,
         total: parseFloat(document.getElementById('form-total').value),
         items: o.items,
       });
-      toast(`Pedido ${ref} creado`);
+      toast(`Pedido ${created.external_ref} creado`);
       navigate('#/orders');
     } catch(e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'Crear pedido'; }
   };
