@@ -32,10 +32,30 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)):
         items=payload.items,
     )
     db.add(order)
-    db.flush()  # obtiene el UUID generado por Postgres antes del commit
+    db.flush()
     db.add(StatusHistory(order_id=order.id, status="pendiente", source="rappi"))
     db.commit()
     db.refresh(order)
+
+    # Notificar al backend de Mr. Sushi para que cree el pedido en DynamoDB
+    try:
+        httpx.post(
+            f"{MRSUSHI_API_URL}/pedidos",
+            json={
+                "tenantId": order.tenant_id,
+                "source": "rappi",
+                "externalRef": order.external_ref,
+                "customer": {
+                    "name": order.customer_name,
+                    "address": order.customer_address,
+                },
+                "items": order.items or [],
+            },
+            timeout=5,
+        )
+    except httpx.RequestError:
+        pass  # No bloquear si el backend de Mr. Sushi no responde
+
     return {
         "id": str(order.id),
         "external_ref": order.external_ref,

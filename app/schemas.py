@@ -1,3 +1,4 @@
+from uuid import UUID
 from pydantic import BaseModel
 from typing import Optional, Any
 from decimal import Decimal
@@ -18,7 +19,7 @@ class StatusUpdate(BaseModel):
 
 
 class OrderResponse(BaseModel):
-    id: str
+    id: UUID
     external_ref: str
     status: str
     tenant_id: str
@@ -34,7 +35,7 @@ class OrderResponse(BaseModel):
 
 
 class StatusHistoryResponse(BaseModel):
-    id: str
+    id: UUID
     status: str
     source: str
     created_at: datetime
