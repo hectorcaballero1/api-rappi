@@ -344,18 +344,18 @@ function renderNewOrder(app) {
         <div style="font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;padding:4px 0">${cat}</div>
         ${prods.map(p => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">
-            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">S/${parseFloat(p.price).toFixed(2)}</span></span>
+            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">${p.price ? `S/${parseFloat(p.price).toFixed(2)}` : ''}</span></span>
             <div style="display:flex;align-items:center;gap:6px">
-              <button type="button" class="btn btn-secondary btn-sm" data-dec="${p.id}" style="padding:2px 8px">−</button>
-              <span id="qty-${p.id}" style="min-width:20px;text-align:center">0</span>
-              <button type="button" class="btn btn-secondary btn-sm" data-inc="${p.id}" style="padding:2px 8px">+</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-dec="${p.productId}" style="padding:2px 8px">−</button>
+              <span id="qty-${p.productId}" style="min-width:20px;text-align:center">0</span>
+              <button type="button" class="btn btn-secondary btn-sm" data-inc="${p.productId}" style="padding:2px 8px">+</button>
             </div>
           </div>`).join('')}
       </div>`).join('');
 
     // Map de productos por id para acceso rápido
     const productMap = {};
-    products.forEach(p => { productMap[p.id] = p; });
+    products.forEach(p => { productMap[p.productId] = p; });
 
     container.addEventListener('click', e => {
       const inc = e.target.dataset.inc;
@@ -399,7 +399,7 @@ function renderNewOrder(app) {
     const btn = document.getElementById('submit-btn');
     btn.disabled = true; btn.textContent = 'Creando…';
     const items = Object.values(cart).map(({ product, qty }) => ({
-      productId: product.id,
+      productId: product.productId,
       name: product.name,
       category: product.category,
       price: parseFloat(product.price),
