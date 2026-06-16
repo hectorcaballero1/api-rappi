@@ -353,10 +353,6 @@ function renderNewOrder(app) {
     document.getElementById('catalog-loading').style.display = 'none';
     container.style.display = 'flex';
 
-    // Map de productos por id para acceso rápido (construido antes del HTML)
-    const productMap = {};
-    products.forEach(p => { productMap[p.productId] = p; });
-
     // Agrupar por categoría
     const byCategory = {};
     products.forEach(p => {
@@ -365,43 +361,75 @@ function renderNewOrder(app) {
       byCategory[cat].push(p);
     });
 
-    const safeId = id => String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
+    container.innerHTML = '';
 
-    container.innerHTML = Object.entries(byCategory).map(([cat, prods]) => `
-      <div style="margin-bottom:8px">
-        <div style="font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;padding:4px 0">${cat}</div>
-        ${prods.map(p => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">
-            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">${parseFloat(p.price) > 0 ? `S/${parseFloat(p.price).toFixed(2)}` : ''}</span></span>
-            <div style="display:flex;align-items:center;gap:6px">
-              <button type="button" class="btn btn-secondary btn-sm qty-dec" data-pid="${p.productId}" style="padding:2px 8px">−</button>
-              <span id="qty-${safeId(p.productId)}" style="min-width:20px;text-align:center">0</span>
-              <button type="button" class="btn btn-secondary btn-sm qty-inc" data-pid="${p.productId}" style="padding:2px 8px">+</button>
-            </div>
-          </div>`).join('')}
-      </div>`).join('');
+    Object.entries(byCategory).forEach(([cat, prods]) => {
+      const section = document.createElement('div');
+      section.style.marginBottom = '8px';
 
-    // onclick directo en cada botón — elimina el riesgo de que listeners
-    // acumulados por múltiples llamadas a renderCatalog apunten al producto equivocado
-    container.querySelectorAll('.qty-inc').forEach(btn => {
-      const pid = btn.dataset.pid;
-      btn.onclick = () => {
-        if (!productMap[pid]) return;
-        cart[pid] = cart[pid] || { product: productMap[pid], qty: 0 };
-        cart[pid].qty++;
-        document.getElementById('qty-' + safeId(pid)).textContent = cart[pid].qty;
-        recalc();
-      };
-    });
-    container.querySelectorAll('.qty-dec').forEach(btn => {
-      const pid = btn.dataset.pid;
-      btn.onclick = () => {
-        if (!cart[pid] || cart[pid].qty === 0) return;
-        cart[pid].qty--;
-        document.getElementById('qty-' + safeId(pid)).textContent = cart[pid].qty;
-        if (cart[pid].qty === 0) delete cart[pid];
-        recalc();
-      };
+      const header = document.createElement('div');
+      header.style.cssText = 'font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;padding:4px 0';
+      header.textContent = cat;
+      section.appendChild(header);
+
+      prods.forEach(product => {
+        const price = parseFloat(product.price);
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)';
+
+        const nameEl = document.createElement('span');
+        nameEl.style.fontSize = '.875rem';
+        nameEl.textContent = product.name;
+        if (price > 0) {
+          const priceEl = document.createElement('span');
+          priceEl.style.color = 'var(--text2)';
+          priceEl.textContent = ` S/${price.toFixed(2)}`;
+          nameEl.appendChild(priceEl);
+        }
+
+        const controls = document.createElement('div');
+        controls.style.cssText = 'display:flex;align-items:center;gap:6px';
+
+        const decBtn = document.createElement('button');
+        decBtn.type = 'button';
+        decBtn.className = 'btn btn-secondary btn-sm';
+        decBtn.style.padding = '2px 8px';
+        decBtn.textContent = '−';
+
+        const qtyEl = document.createElement('span');
+        qtyEl.style.cssText = 'min-width:20px;text-align:center';
+        qtyEl.textContent = '0';
+
+        const incBtn = document.createElement('button');
+        incBtn.type = 'button';
+        incBtn.className = 'btn btn-secondary btn-sm';
+        incBtn.style.padding = '2px 8px';
+        incBtn.textContent = '+';
+
+        // Cierre directo sobre `product` y `qtyEl` — sin dataset, sin getElementById
+        incBtn.onclick = () => {
+          const id = product.productId;
+          cart[id] = cart[id] || { product, qty: 0 };
+          cart[id].qty++;
+          qtyEl.textContent = cart[id].qty;
+          recalc();
+        };
+        decBtn.onclick = () => {
+          const id = product.productId;
+          if (!cart[id] || cart[id].qty === 0) return;
+          cart[id].qty--;
+          qtyEl.textContent = cart[id].qty;
+          if (cart[id].qty === 0) delete cart[id];
+          recalc();
+        };
+
+        controls.append(decBtn, qtyEl, incBtn);
+        row.append(nameEl, controls);
+        section.appendChild(row);
+      });
+
+      container.appendChild(section);
     });
   }
 
