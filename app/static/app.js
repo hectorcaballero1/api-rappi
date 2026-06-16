@@ -374,30 +374,34 @@ function renderNewOrder(app) {
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">
             <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">${parseFloat(p.price) > 0 ? `S/${parseFloat(p.price).toFixed(2)}` : ''}</span></span>
             <div style="display:flex;align-items:center;gap:6px">
-              <button type="button" class="btn btn-secondary btn-sm" data-dec="${p.productId}" style="padding:2px 8px">−</button>
+              <button type="button" class="btn btn-secondary btn-sm qty-dec" data-pid="${p.productId}" style="padding:2px 8px">−</button>
               <span id="qty-${safeId(p.productId)}" style="min-width:20px;text-align:center">0</span>
-              <button type="button" class="btn btn-secondary btn-sm" data-inc="${p.productId}" style="padding:2px 8px">+</button>
+              <button type="button" class="btn btn-secondary btn-sm qty-inc" data-pid="${p.productId}" style="padding:2px 8px">+</button>
             </div>
           </div>`).join('')}
       </div>`).join('');
 
-    container.addEventListener('click', e => {
-      const inc = e.target.dataset.inc;
-      const dec = e.target.dataset.dec;
-      if (inc && productMap[inc]) {
-        cart[inc] = cart[inc] || { product: productMap[inc], qty: 0 };
-        cart[inc].qty++;
-        const el = document.getElementById(`qty-${safeId(inc)}`);
-        if (el) el.textContent = cart[inc].qty;
+    // onclick directo en cada botón — elimina el riesgo de que listeners
+    // acumulados por múltiples llamadas a renderCatalog apunten al producto equivocado
+    container.querySelectorAll('.qty-inc').forEach(btn => {
+      const pid = btn.dataset.pid;
+      btn.onclick = () => {
+        if (!productMap[pid]) return;
+        cart[pid] = cart[pid] || { product: productMap[pid], qty: 0 };
+        cart[pid].qty++;
+        document.getElementById('qty-' + safeId(pid)).textContent = cart[pid].qty;
         recalc();
-      }
-      if (dec && cart[dec] && cart[dec].qty > 0) {
-        cart[dec].qty--;
-        const el = document.getElementById(`qty-${safeId(dec)}`);
-        if (el) el.textContent = cart[dec].qty;
-        if (cart[dec].qty === 0) delete cart[dec];
+      };
+    });
+    container.querySelectorAll('.qty-dec').forEach(btn => {
+      const pid = btn.dataset.pid;
+      btn.onclick = () => {
+        if (!cart[pid] || cart[pid].qty === 0) return;
+        cart[pid].qty--;
+        document.getElementById('qty-' + safeId(pid)).textContent = cart[pid].qty;
+        if (cart[pid].qty === 0) delete cart[pid];
         recalc();
-      }
+      };
     });
   }
 
