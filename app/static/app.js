@@ -327,48 +327,74 @@ function renderNewOrder(app) {
     document.getElementById('submit-btn').disabled = total === 0;
   }
 
-  function renderCatalog(products) {
+  // Expande alitas individuales (6 / 12 piezas) con precios hardcodeados
+  function expandProducts(products) {
+    const ALITAS_PRICES = { '6 alitas': 16.90, '12 alitas': 29.90 };
+    const out = [];
+    for (const p of products) {
+      const key = p.productId || p.name || p.SK || String(out.length);
+      const alitasOpt = (p.options || []).find(o =>
+        Array.isArray(o.choices) && o.choices.includes('6 alitas')
+      );
+      if (alitasOpt) {
+        for (const choice of ['6 alitas', '12 alitas']) {
+          out.push({ ...p, productId: key + '--' + choice.replace(' ', ''), name: `${p.name} · ${choice}`, price: ALITAS_PRICES[choice] });
+        }
+      } else {
+        out.push({ ...p, productId: key });
+      }
+    }
+    return out;
+  }
+
+  function renderCatalog(rawProducts) {
+    const products = expandProducts(rawProducts);
     const container = document.getElementById('catalog-items');
     document.getElementById('catalog-loading').style.display = 'none';
     container.style.display = 'flex';
 
+    // Map de productos por id para acceso rápido (construido antes del HTML)
+    const productMap = {};
+    products.forEach(p => { productMap[p.productId] = p; });
+
     // Agrupar por categoría
     const byCategory = {};
     products.forEach(p => {
-      if (!byCategory[p.category]) byCategory[p.category] = [];
-      byCategory[p.category].push(p);
+      const cat = p.category || 'Otros';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(p);
     });
+
+    const safeId = id => String(id).replace(/[^a-zA-Z0-9_-]/g, '_');
 
     container.innerHTML = Object.entries(byCategory).map(([cat, prods]) => `
       <div style="margin-bottom:8px">
         <div style="font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;padding:4px 0">${cat}</div>
         ${prods.map(p => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid var(--border)">
-            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">${p.price ? `S/${parseFloat(p.price).toFixed(2)}` : ''}</span></span>
+            <span style="font-size:.875rem">${p.name} <span style="color:var(--text2)">${parseFloat(p.price) > 0 ? `S/${parseFloat(p.price).toFixed(2)}` : ''}</span></span>
             <div style="display:flex;align-items:center;gap:6px">
               <button type="button" class="btn btn-secondary btn-sm" data-dec="${p.productId}" style="padding:2px 8px">−</button>
-              <span id="qty-${p.productId}" style="min-width:20px;text-align:center">0</span>
+              <span id="qty-${safeId(p.productId)}" style="min-width:20px;text-align:center">0</span>
               <button type="button" class="btn btn-secondary btn-sm" data-inc="${p.productId}" style="padding:2px 8px">+</button>
             </div>
           </div>`).join('')}
       </div>`).join('');
 
-    // Map de productos por id para acceso rápido
-    const productMap = {};
-    products.forEach(p => { productMap[p.productId] = p; });
-
     container.addEventListener('click', e => {
       const inc = e.target.dataset.inc;
       const dec = e.target.dataset.dec;
-      if (inc) {
+      if (inc && productMap[inc]) {
         cart[inc] = cart[inc] || { product: productMap[inc], qty: 0 };
         cart[inc].qty++;
-        document.getElementById(`qty-${inc}`).textContent = cart[inc].qty;
+        const el = document.getElementById(`qty-${safeId(inc)}`);
+        if (el) el.textContent = cart[inc].qty;
         recalc();
       }
       if (dec && cart[dec] && cart[dec].qty > 0) {
         cart[dec].qty--;
-        document.getElementById(`qty-${dec}`).textContent = cart[dec].qty;
+        const el = document.getElementById(`qty-${safeId(dec)}`);
+        if (el) el.textContent = cart[dec].qty;
         if (cart[dec].qty === 0) delete cart[dec];
         recalc();
       }
