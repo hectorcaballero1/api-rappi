@@ -1,5 +1,6 @@
 const API = '';
 const TOKEN_KEY = 'rappi_token';
+let catalogCache = null;
 
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
@@ -213,7 +214,8 @@ async function renderOrderDetail(app, ref) {
         <h2>${order.external_ref}</h2>
         <div class="page-header-actions">
           <span class="badge ${bc}">${order.status}</span>
-          ${order.status !== 'entregado' ? `<button class="btn btn-primary btn-sm" id="deliver-btn">Marcar entregado</button>` : ''}
+          ${order.status === 'entregando_a_rappi' ? `<button class="btn btn-primary btn-sm" id="deliver-btn">Marcar entregado</button>` :
+            order.status !== 'entregado' ? `<span style="color:var(--text2);font-size:.875rem">Esperando que Mr. Sushi prepare el pedido</span>` : ''}
         </div>
       </div>
       <div class="detail-grid">
@@ -239,7 +241,7 @@ async function renderOrderDetail(app, ref) {
     `);
     bindNav();
 
-    if (order.status !== 'entregado') {
+    if (order.status === 'entregando_a_rappi') {
       document.getElementById('deliver-btn').onclick = async () => {
         const btn = document.getElementById('deliver-btn');
         btn.disabled = true; btn.textContent = 'Entregando…';
@@ -373,13 +375,17 @@ function renderNewOrder(app) {
     });
   }
 
-  // Cargar catálogo
-  api('GET', '/catalog').then(data => {
-    const products = Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
-    renderCatalog(products);
-  }).catch(() => {
-    document.getElementById('catalog-loading').textContent = 'Error al cargar catálogo';
-  });
+  // Cargar catálogo (usa cache si ya fue fetcheado en esta sesión)
+  if (catalogCache) {
+    renderCatalog(catalogCache);
+  } else {
+    api('GET', '/catalog').then(data => {
+      catalogCache = Array.isArray(data) ? data : (data.body ? JSON.parse(data.body) : []);
+      renderCatalog(catalogCache);
+    }).catch(() => {
+      document.getElementById('catalog-loading').textContent = 'Error al cargar catálogo';
+    });
+  }
 
   document.getElementById('random-btn').onclick = () => {
     const o = randomOrder(TENANTS);
