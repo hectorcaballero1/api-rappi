@@ -11,6 +11,9 @@ from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/orders", tags=["orders"], dependencies=[Depends(get_current_user)])
 catalog_router = APIRouter(tags=["catalog"])
+# Router para webhooks máquina-a-máquina: NO usa JWT de usuario, solo x-api-key.
+# (El backend de Mr. Sushi no tiene un usuario logueado, autentica con el secret.)
+webhook_router = APIRouter(prefix="/orders", tags=["webhook"])
 MRSUSHI_API_URL = os.getenv("MRSUSHI_API_URL", "http://localhost:3000")
 RAPPI_WEBHOOK_SECRET = os.getenv("RAPPI_WEBHOOK_SECRET", "")
 
@@ -110,7 +113,7 @@ def get_order_history(external_ref: str, db: Session = Depends(get_db)):
     return [StatusHistoryResponse.model_validate(h) for h in history]
 
 
-@router.post("/{external_ref}/status")
+@webhook_router.post("/{external_ref}/status")
 def receive_status(
     external_ref: str,
     payload: StatusUpdate,
